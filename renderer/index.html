@@ -44,6 +44,7 @@
   .dshp-amount { font-size: calc(var(--dshp-u) * 119); font-weight: 800; line-height: 1.05; }
   .dshp-amount.dshp-low { color: #d25450; }
   .dshp-hint  { font-size: calc(var(--dshp-u) * 54); color: #9fb0d9; letter-spacing: .02em; }
+  .dshp-time  { font-size: calc(var(--dshp-u) * 44); color: #9fb0d9; letter-spacing: .12em; font-variant-numeric: tabular-nums; }
   .dshp-mood {
     position: absolute; left: 72%; top: 6%;
     font-size: calc(var(--dshp-u) * 120); pointer-events: none;
@@ -89,6 +90,7 @@
         <div class="dshp-label" id="labelEl">DeepSeek 余额</div>
         <div class="dshp-amount" id="amountEl">--</div>
         <div class="dshp-hint" id="hintEl">加载中…</div>
+        <div class="dshp-time" id="timeEl"></div>
       </div>
     </div>
   </div>

@@ -48,6 +48,7 @@ function defaultConfig() {
     customImage: false,
     hotkey: true,
     trayIcon: true,
+    showTime: true,
     displayMode: 'all',   // all | taskbar | tray | hidden
     alwaysOnTop: true,      // 是否始终置顶
   }
@@ -459,7 +460,7 @@ ipcMain.handle('pet:get-config', () => {
     trackStats: c.trackStats !== false, mood: c.mood !== false, bounceAnim: c.bounceAnim !== false,
     sound: c.sound !== false, quotesEnabled: !!c.quotesEnabled, quotesText: c.quotesText || '',
     customImage: !!c.customImage, hotkey: c.hotkey !== false, trayIcon: c.trayIcon !== false,
-    autoStart: !!c.autoStart, displayMode: c.displayMode || 'all', alwaysOnTop: c.alwaysOnTop !== false,
+    autoStart: !!c.autoStart, displayMode: c.displayMode || 'all', alwaysOnTop: c.alwaysOnTop !== false, showTime: c.showTime !== false,
   }
 })
 ipcMain.handle('pet:get-full-config', () => {
@@ -472,7 +473,7 @@ ipcMain.handle('pet:get-full-config', () => {
     trackStats: c.trackStats !== false, mood: c.mood !== false, bounceAnim: c.bounceAnim !== false,
     sound: c.sound !== false, quotesEnabled: !!c.quotesEnabled, quotesText: c.quotesText || '',
     customImage: !!c.customImage, hotkey: c.hotkey !== false, trayIcon: c.trayIcon !== false,
-    autoStart: !!c.autoStart, displayMode: c.displayMode || 'all', alwaysOnTop: c.alwaysOnTop !== false,
+    autoStart: !!c.autoStart, displayMode: c.displayMode || 'all', alwaysOnTop: c.alwaysOnTop !== false, showTime: c.showTime !== false,
   }
 })
 ipcMain.handle('pet:save-settings', (_e, settings) => {
@@ -511,6 +512,7 @@ ipcMain.handle('pet:save-settings', (_e, settings) => {
     autoStart: bool(s.autoStart, !!cur.autoStart),
     displayMode: (s.displayMode === 'taskbar' || s.displayMode === 'tray' || s.displayMode === 'hidden') ? s.displayMode : 'all',
     alwaysOnTop: bool(s.alwaysOnTop, cur.alwaysOnTop !== false),
+    showTime: bool(s.showTime, cur.showTime !== false),
   }
   const oldMode = cur.displayMode || 'all'
   const oldSkip = (oldMode === 'tray' || oldMode === 'hidden')
@@ -594,6 +596,7 @@ if (!gotLock) {
               pet: !!el('.dshp-root'),
               imgLoaded: !!el('.dshp-img') && el('.dshp-img').complete && el('.dshp-img').naturalWidth > 0,
               label: el('.dshp-label') ? el('.dshp-label').textContent : null,
+              time: el('.dshp-time') ? el('.dshp-time').textContent : null,
               amount: el('.dshp-amount') ? el('.dshp-amount').textContent : null,
               hint: el('.dshp-hint') ? el('.dshp-hint').textContent : null,
               bodyText: document.body.innerText,
@@ -643,6 +646,7 @@ if (!gotLock) {
                 hasHotkey: !!document.getElementById('hotkeyInput'),
                 hasDisplayMode: !!document.querySelector('input[name=displayMode]'),
                 hasAlwaysTop: !!document.getElementById('alwaysTopInput'),
+                hasShowTime: !!document.getElementById('showTimeInput'),
               }))()`
             )
             console.log('[smoke] settings=' + JSON.stringify(sinfo))

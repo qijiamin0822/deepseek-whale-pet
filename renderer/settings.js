@@ -11,6 +11,7 @@ var trackStatsInput = $('trackStatsInput')
 var idleInput = $('idleInput')
 var idleSecInput = $('idleSecInput')
 var moodInput = $('moodInput')
+var showTimeInput = $('showTimeInput')
 var bounceInput = $('bounceInput')
 var soundInput = $('soundInput')
 var quotesInput = $('quotesInput')
@@ -42,6 +43,7 @@ window.pet.getFullConfig().then(function (c) {
   idleInput.checked = c.idleTransparency !== false
   if (typeof c.idleSec === 'number') idleSecInput.value = c.idleSec
   moodInput.checked = c.mood !== false
+  showTimeInput.checked = c.showTime !== false
   bounceInput.checked = c.bounceAnim !== false
   soundInput.checked = c.sound !== false
   quotesInput.checked = !!c.quotesEnabled
@@ -73,6 +75,7 @@ function collect() {
     idleTransparency: idleInput.checked,
     idleSec: Math.max(1, Math.min(300, Math.round(num(idleSecInput.value, 5)))),
     mood: moodInput.checked,
+    showTime: showTimeInput.checked,
     bounceAnim: bounceInput.checked,
     sound: soundInput.checked,
     quotesEnabled: quotesInput.checked,

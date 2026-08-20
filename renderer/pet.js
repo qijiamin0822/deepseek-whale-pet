@@ -18,6 +18,7 @@ var img = document.getElementById('img')
 var labelEl = document.getElementById('labelEl')
 var amountEl = document.getElementById('amountEl')
 var hintEl = document.getElementById('hintEl')
+var timeEl = document.getElementById('timeEl')
 var moodEl = document.getElementById('moodEl')
 var minusBtn = document.getElementById('minusBtn')
 var plusBtn = document.getElementById('plusBtn')
@@ -46,6 +47,7 @@ var state = {
   mood: '',
   lowThreshold: 5,
   flags: {
+    showTime: true,
     idleTransparency: true, idleSec: 5,
     mood: true, bounceAnim: true, sound: true,
     quotesEnabled: false, quotesText: '',
@@ -83,6 +85,7 @@ function applyLabel(text) {
 function applyFlags(c) {
   if (!c) return
   var f = state.flags
+  if (typeof c.showTime === 'boolean') { f.showTime = c.showTime; applyTime() }
   if (typeof c.idleTransparency === 'boolean') f.idleTransparency = c.idleTransparency
   if (typeof c.idleSec === 'number') f.idleSec = c.idleSec
   if (typeof c.mood === 'boolean') f.mood = c.mood
@@ -95,6 +98,18 @@ function applyFlags(c) {
   }
   if (typeof c.lowThreshold === 'number') state.lowThreshold = c.lowThreshold
   if (typeof c.customImage === 'boolean') f.customImage = c.customImage
+}
+
+var timeShown = ''
+function applyTime() {
+  timeEl.style.display = state.flags.showTime ? 'block' : 'none'
+  updateTime()
+}
+function updateTime() {
+  var d = new Date()
+  var p = function (n) { return String(n).padStart(2, '0') }
+  var txt = p(d.getHours()) + ':' + p(d.getMinutes())
+  if (txt !== timeShown) { timeShown = txt; timeEl.textContent = txt }
 }
 
 function applyImage() {
@@ -563,11 +578,13 @@ Promise.all([window.pet.getPosition(), window.pet.getScreen(), window.pet.getSiz
       applyLabel('DeepSeek 余额')
     }
     applyImage()
+    applyTime()
     startAutoRefresh()
     scheduleQuote()
     refreshStats()
     settle()
     refresh(false)
+    setInterval(updateTime, 1000)
   })
   .catch(function () {
     applyLabel('DeepSeek 余额')
