@@ -19,7 +19,7 @@ var customImageInput = $('customImageInput')
 var imageBtn = $('imageBtn')
 var autoStartInput = $('autoStartInput')
 var hotkeyInput = $('hotkeyInput')
-var trayInput = $('trayInput')
+var alwaysTopInput = $('alwaysTopInput')
 var saveBtn = $('saveBtn')
 var testBtn = $('testBtn')
 var statusEl = $('status')
@@ -49,7 +49,10 @@ window.pet.getFullConfig().then(function (c) {
   customImageInput.checked = !!c.customImage
   autoStartInput.checked = !!c.autoStart
   hotkeyInput.checked = c.hotkey !== false
-  trayInput.checked = c.trayIcon !== false
+  alwaysTopInput.checked = c.alwaysOnTop !== false
+  var dm = (c.displayMode === 'taskbar' || c.displayMode === 'tray' || c.displayMode === 'hidden') ? c.displayMode : 'all'
+  var dmRadio = document.querySelector('input[name=displayMode][value="' + dm + '"]')
+  if (dmRadio) dmRadio.checked = true
 })
 
 function num(v, dft) {
@@ -77,7 +80,8 @@ function collect() {
     customImage: customImageInput.checked,
     autoStart: autoStartInput.checked,
     hotkey: hotkeyInput.checked,
-    trayIcon: trayInput.checked,
+    alwaysOnTop: alwaysTopInput.checked,
+    displayMode: (document.querySelector('input[name=displayMode]:checked') || {}).value || 'all',
   }
 }
 

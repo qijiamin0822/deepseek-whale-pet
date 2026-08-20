@@ -48,6 +48,8 @@ function defaultConfig() {
     customImage: false,
     hotkey: true,
     trayIcon: true,
+    displayMode: 'all',   // all | taskbar | tray | hidden
+    alwaysOnTop: true,      // 是否始终置顶
   }
 }
 
@@ -147,12 +149,20 @@ function notifyLowBalance(total, currency) {
 // ---------------------------------------------------------------------------
 // 桌宠窗口
 // ---------------------------------------------------------------------------
-function createPetWindow() {
+function createPetWindow(posOverride) {
   const size = petSize(cfg.scale)
   const wa = screen.getPrimaryDisplay().workArea
+  const mode = cfg.displayMode || 'all'
+  // 任务栏图标只在 all / taskbar 模式显示（运行时 setSkipTaskbar 在 Windows 上不可靠，
+  // 必须在创建窗口时用 skipTaskbar 参数决定）
+  const skipTaskbar = (mode === 'tray' || mode === 'hidden')
 
   let x = cfg.x
   let y = cfg.y
+  if (posOverride && typeof posOverride.x === 'number' && typeof posOverride.y === 'number') {
+    x = posOverride.x
+    y = posOverride.y
+  }
   if (typeof x !== 'number' || typeof y !== 'number' ||
       x < wa.x - size || x > wa.x + wa.width - 1 ||
       y < wa.y - size || y > wa.y + wa.height - 1) {
@@ -174,7 +184,7 @@ function createPetWindow() {
     fullscreenable: false,
     hasShadow: false,
     alwaysOnTop: true,
-    skipTaskbar: true,
+    skipTaskbar,
     show: false,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
@@ -191,6 +201,15 @@ function createPetWindow() {
     petWin.focus()
   })
   petWin.on('closed', () => { petWin = null })
+}
+
+// 运行时 setSkipTaskbar 在 Windows 上不可靠，切换任务栏显隐需重建窗口
+function recreatePetWindow() {
+  const pos = petWin && !petWin.isDestroyed() ? petWin.getPosition() : null
+  if (petWin && !petWin.isDestroyed()) petWin.destroy()
+  petWin = null
+  createPetWindow(pos ? { x: pos[0], y: pos[1] } : null)
+  applyDisplayMode(cfg.displayMode)
 }
 
 function schedulePosSave() {
@@ -294,6 +313,20 @@ function openSettings() {
 }
 
 // ---------------------------------------------------------------------------
+// 显示位置模式：all(全显示) | taskbar(仅任务栏) | tray(仅托盘) | hidden(全隐藏)
+// ---------------------------------------------------------------------------
+function applyDisplayMode(mode) {
+  if (!petWin || petWin.isDestroyed()) return
+  const m = mode || 'all'
+  // 桌宠本体始终显示，与显示位置无关；置顶只由「始终置顶」决定
+  petWin.setAlwaysOnTop(loadConfig().alwaysOnTop !== false, 'screen-saver')
+  petWin.show()
+  // 任务栏显隐由创建窗口时的 skipTaskbar 决定（运行时切换不可靠，需重建）
+  const showTray = (m === 'all' || m === 'tray')
+  updateTray(showTray)
+}
+
+// ---------------------------------------------------------------------------
 // 托盘
 // ---------------------------------------------------------------------------
 function buildTrayImage() {
@@ -326,6 +359,16 @@ function updateTray(enabled) {
 // ---------------------------------------------------------------------------
 function updateHotkey(enabled) {
   globalShortcut.unregisterAll()
+  // 全隐藏时的安全恢复热键（始终可用）
+  try {
+    globalShortcut.register('Control+Shift+H', () => {
+      const cur = loadConfig().displayMode || 'all'
+      const next = cur === 'hidden' ? 'all' : 'hidden'
+      cfg = saveConfig({ displayMode: next })
+      applyDisplayMode(next)
+      if (petWin && !petWin.isDestroyed()) petWin.webContents.send('pet:config-updated')
+    })
+  } catch (err) { /* ignore */ }
   if (!enabled) return
   globalShortcut.register('Control+Shift+R', () => {
     if (petWin && !petWin.isDestroyed()) petWin.webContents.send('pet:refresh')
@@ -416,7 +459,7 @@ ipcMain.handle('pet:get-config', () => {
     trackStats: c.trackStats !== false, mood: c.mood !== false, bounceAnim: c.bounceAnim !== false,
     sound: c.sound !== false, quotesEnabled: !!c.quotesEnabled, quotesText: c.quotesText || '',
     customImage: !!c.customImage, hotkey: c.hotkey !== false, trayIcon: c.trayIcon !== false,
-    autoStart: !!c.autoStart,
+    autoStart: !!c.autoStart, displayMode: c.displayMode || 'all', alwaysOnTop: c.alwaysOnTop !== false,
   }
 })
 ipcMain.handle('pet:get-full-config', () => {
@@ -429,7 +472,7 @@ ipcMain.handle('pet:get-full-config', () => {
     trackStats: c.trackStats !== false, mood: c.mood !== false, bounceAnim: c.bounceAnim !== false,
     sound: c.sound !== false, quotesEnabled: !!c.quotesEnabled, quotesText: c.quotesText || '',
     customImage: !!c.customImage, hotkey: c.hotkey !== false, trayIcon: c.trayIcon !== false,
-    autoStart: !!c.autoStart,
+    autoStart: !!c.autoStart, displayMode: c.displayMode || 'all', alwaysOnTop: c.alwaysOnTop !== false,
   }
 })
 ipcMain.handle('pet:save-settings', (_e, settings) => {
@@ -466,9 +509,19 @@ ipcMain.handle('pet:save-settings', (_e, settings) => {
     hotkey: bool(s.hotkey, cur.hotkey !== false),
     trayIcon: bool(s.trayIcon, cur.trayIcon !== false),
     autoStart: bool(s.autoStart, !!cur.autoStart),
+    displayMode: (s.displayMode === 'taskbar' || s.displayMode === 'tray' || s.displayMode === 'hidden') ? s.displayMode : 'all',
+    alwaysOnTop: bool(s.alwaysOnTop, cur.alwaysOnTop !== false),
   }
+  const oldMode = cur.displayMode || 'all'
+  const oldSkip = (oldMode === 'tray' || oldMode === 'hidden')
+  const newSkip = (patch.displayMode === 'tray' || patch.displayMode === 'hidden')
   cfg = saveConfig(patch)
-  updateTray(cfg.trayIcon)
+  if (oldSkip !== newSkip) {
+    // 任务栏显隐状态变化 -> 重建窗口以应用创建期 skipTaskbar
+    recreatePetWindow()
+  } else {
+    applyDisplayMode(cfg.displayMode)
+  }
   updateHotkey(cfg.hotkey)
   updateAutoStart(cfg.autoStart)
   if (petWin && !petWin.isDestroyed()) {
@@ -528,7 +581,7 @@ if (!gotLock) {
     console.log('[boot] userData=' + app.getPath('userData'))
     loadStats()
     createPetWindow()
-    updateTray(cfg.trayIcon)
+    applyDisplayMode(cfg.displayMode)
     updateHotkey(cfg.hotkey)
 
     if (isSmokeTest) {
@@ -588,10 +641,24 @@ if (!gotLock) {
                 hasQuotes: !!document.getElementById('quotesInput'),
                 hasImage: !!document.getElementById('imageBtn'),
                 hasHotkey: !!document.getElementById('hotkeyInput'),
-                hasTray: !!document.getElementById('trayInput'),
+                hasDisplayMode: !!document.querySelector('input[name=displayMode]'),
+                hasAlwaysTop: !!document.getElementById('alwaysTopInput'),
               }))()`
             )
             console.log('[smoke] settings=' + JSON.stringify(sinfo))
+          // 布局自检：body 不应滚动（避免双滚动条），只有内层滚动区滚动
+          try {
+            const lay = await settingsWin.webContents.executeJavaScript(`(() => {
+              const sc = document.querySelector('.scroll')
+              return {
+                winH: window.innerHeight,
+                bodyScrollH: document.body.scrollHeight,
+                bodyOverflow: document.body.scrollHeight - window.innerHeight,
+                scrollOverflow: sc ? sc.scrollHeight - sc.clientHeight : -1
+              }
+            })()`)
+            console.log('[smoke] settings-layout=' + JSON.stringify(lay))
+          } catch (err) { console.error('[smoke] settings-layout failed:', err) }
           // 设置窗口复选框是否反映保存的值（idleTransparency 应为 false）
           try {
             const boxes = await settingsWin.webContents.executeJavaScript(`(() => ({
@@ -622,6 +689,19 @@ if (!gotLock) {
             const flags = await petWin.webContents.executeJavaScript(`window.__dshpFlags ? window.__dshpFlags() : null`)
             const cfgState = await petWin.webContents.executeJavaScript(`window.__dshpConfig ? window.__dshpConfig() : null`)
             console.log('[smoke] applied-flags=' + JSON.stringify(flags) + ' cfg=' + JSON.stringify(cfgState))
+          // 显示模式自检：4 种模式下桌宠都应始终可见（模式只影响任务栏/托盘图标）
+          // 注意：切换任务栏组会重建桌宠窗口，因此从稳定的设置窗口发 saveSettings
+          try {
+            const visMap = {}
+            for (const m of ['all', 'taskbar', 'tray', 'hidden']) {
+              await settingsWin.webContents.executeJavaScript(`window.pet.saveSettings({ displayMode: '${m}' })`)
+              await new Promise((r) => setTimeout(r, 2000))   // 重建窗口需时间
+              visMap[m] = petWin.isVisible()
+            }
+            await settingsWin.webContents.executeJavaScript(`window.pet.saveSettings({ displayMode: 'all' })`)
+            await new Promise((r) => setTimeout(r, 2000))
+            console.log('[smoke] display-mode visible-map=' + JSON.stringify(visMap))
+          } catch (err) { console.error('[smoke] display-mode test failed:', err) }
           } catch (err) { console.error('[smoke] flags check failed:', err) }
           // 刷新不闪 "--" 自检：模拟余额 10.00 -> 9.50，过程中数字应保持旧值并滚动
           try {

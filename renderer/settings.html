@@ -6,10 +6,11 @@
 <title>DeepSeek 余额桌宠 · 设置</title>
 <style>
   * { box-sizing: border-box; }
-  body { font-family: "Microsoft YaHei", system-ui, sans-serif; margin: 0; padding: 18px 24px; background: #f7f9fe; color: #333; }
+  html, body { height: 100%; }
+  body { font-family: "Microsoft YaHei", system-ui, sans-serif; margin: 0; padding: 18px 24px; background: #f7f9fe; color: #333; overflow: hidden; }
   h1 { font-size: 16px; margin: 0 0 2px; color: #536ba9; }
   p.desc { font-size: 12px; color: #888; margin: 0 0 14px; line-height: 1.6; }
-  .scroll { max-height: 470px; overflow-y: auto; padding-right: 8px; }
+  .scroll { max-height: calc(100vh - 190px); overflow-y: auto; padding-right: 8px; }
   .group { margin: 0 0 16px; }
   .group h2 {
     font-size: 12px; color: #536ba9; font-weight: 700; letter-spacing: .04em;
@@ -22,12 +23,17 @@
   }
   textarea { min-height: 54px; resize: vertical; font-family: inherit; }
   input:focus, textarea:focus { border-color: #536ba9; }
+  input[type=number]::-webkit-outer-spin-button,
+  input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
   .row2 { display: flex; gap: 10px; align-items: center; }
   .row2 input[type=number] { width: 90px; }
   .check { display: flex; align-items: center; gap: 8px; margin: 3px 0 9px; cursor: pointer; }
   .check input { width: 15px; height: 15px; cursor: pointer; flex: 0 0 auto; }
   .check span { font-size: 13px; color: #444; }
   .check .sub { font-size: 11px; color: #9aa3bd; margin-left: 4px; }
+  .radio-group { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+  .radio { display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 13px; color: #444; }
+  .radio input { width: 14px; height: 14px; cursor: pointer; }
   .tip { font-size: 11px; color: #9aa3bd; margin: -4px 0 12px; line-height: 1.5; }
   .btns { display: flex; gap: 10px; margin-top: 6px; }
   button { padding: 9px 18px; border: none; border-radius: 8px; font-size: 13px; cursor: pointer; }
@@ -145,10 +151,18 @@
         <span class="sub">Ctrl+Shift+R 立即刷新</span>
       </label>
       <label class="check">
-        <input type="checkbox" id="trayInput" checked />
-        <span>托盘图标</span>
-        <span class="sub">系统托盘显示小鲸鱼菜单</span>
+        <input type="checkbox" id="alwaysTopInput" checked />
+        <span>始终置顶</span>
+        <span class="sub">小鲸鱼悬浮在其它窗口之上</span>
       </label>
+      <label class="field" style="margin-bottom:6px;">任务栏 / 托盘显示位置</label>
+      <div class="radio-group" id="displayModeGroup">
+        <label class="radio"><input type="radio" name="displayMode" value="all" checked /><span>全显示（任务栏 + 托盘都有图标）</span></label>
+        <label class="radio"><input type="radio" name="displayMode" value="taskbar" /><span>仅任务栏（只有任务栏图标）</span></label>
+        <label class="radio"><input type="radio" name="displayMode" value="tray" /><span>仅托盘（只有托盘图标）</span></label>
+        <label class="radio"><input type="radio" name="displayMode" value="hidden" /><span>全隐藏（任务栏和托盘都没有图标）</span></label>
+      </div>
+      <div class="tip" style="margin-top:2px;">此选项只影响任务栏/托盘图标，与桌宠本体无关——小鲸鱼始终显示在桌面，是否置顶由上方「始终置顶」控制。</div>
       <label class="check">
         <input type="checkbox" id="snapInput" checked />
         <span>自动吸附屏幕边缘</span>
