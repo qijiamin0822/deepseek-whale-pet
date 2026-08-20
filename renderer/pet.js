@@ -579,3 +579,5 @@ window.pet.onRefreshRequested(function () { refresh(true); refreshStats() })
 window.__dshpTestRefresh = function () { refresh(false) }
 window.__dshpTestState = function () { return { amount: amountEl.textContent, status: state.status } }
 window.__dshpSetFakeBalance = function (v) { window.__dshpFakeBalance = v }
+window.__dshpFlags = function () { return JSON.parse(JSON.stringify(state.flags)) }
+window.__dshpConfig = function () { return { snap: state.snap, label: state.label, refreshSec: state.refreshSec } }

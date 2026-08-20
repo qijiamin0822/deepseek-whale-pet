@@ -81,6 +81,23 @@ function collect() {
   }
 }
 
+// 任何开关/输入改动后自动保存（防抖 500ms），不用手动点保存
+var saveTimer = null
+function scheduleSave() {
+  if (saveTimer) clearTimeout(saveTimer)
+  saveTimer = setTimeout(function () {
+    saveTimer = null
+    window.pet.saveSettings(collect()).then(function (r) {
+      if (r && r.ok) statusEl.textContent = '已自动保存 ✓'
+      statusEl.className = r && r.ok ? 'ok' : 'err'
+    })
+  }, 500)
+}
+Array.prototype.forEach.call(document.querySelectorAll('input, textarea'), function (el) {
+  el.addEventListener('change', scheduleSave)
+  el.addEventListener('input', scheduleSave)
+})
+
 saveBtn.addEventListener('click', async function () {
   var r = await window.pet.saveSettings(collect())
   show(r && r.ok ? '已保存。桌宠已用新配置自动刷新。' : '保存失败', r && r.ok ? 'ok' : 'err')

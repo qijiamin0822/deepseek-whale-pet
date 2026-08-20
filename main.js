@@ -438,26 +438,29 @@ ipcMain.handle('pet:save-settings', (_e, settings) => {
   let lowThreshold = Number(s.lowThreshold)
   if (!Number.isFinite(lowThreshold)) lowThreshold = 5
   lowThreshold = clamp(lowThreshold, 0, 100000)
+  // 缺失的字段保留当前已保存的值，避免部分保存把设置重置回默认
+  const cur = loadConfig()
+  const bool = function (v, dft) { return typeof v === 'boolean' ? v : dft }
   const patch = {
     apiKey, balanceUrl,
-    snap: s.snap !== false,
+    snap: bool(s.snap, cur.snap !== false),
     label,
     refreshSec,
     scale: cfg.scale,
-    lowBalanceAlert: !!s.lowBalanceAlert,
+    lowBalanceAlert: bool(s.lowBalanceAlert, !!cur.lowBalanceAlert),
     lowThreshold,
-    idleTransparency: s.idleTransparency !== false,
-    idleSec: clamp(Number(s.idleSec) || 5, 1, 300),
-    trackStats: s.trackStats !== false,
-    mood: s.mood !== false,
-    bounceAnim: s.bounceAnim !== false,
-    sound: s.sound !== false,
-    quotesEnabled: !!s.quotesEnabled,
+    idleTransparency: bool(s.idleTransparency, cur.idleTransparency !== false),
+    idleSec: clamp(Number(s.idleSec) || cur.idleSec || 5, 1, 300),
+    trackStats: bool(s.trackStats, cur.trackStats !== false),
+    mood: bool(s.mood, cur.mood !== false),
+    bounceAnim: bool(s.bounceAnim, cur.bounceAnim !== false),
+    sound: bool(s.sound, cur.sound !== false),
+    quotesEnabled: bool(s.quotesEnabled, !!cur.quotesEnabled),
     quotesText: String(s.quotesText || '').trim(),
-    customImage: !!s.customImage,
-    hotkey: s.hotkey !== false,
-    trayIcon: s.trayIcon !== false,
-    autoStart: !!s.autoStart,
+    customImage: bool(s.customImage, !!cur.customImage),
+    hotkey: bool(s.hotkey, cur.hotkey !== false),
+    trayIcon: bool(s.trayIcon, cur.trayIcon !== false),
+    autoStart: bool(s.autoStart, !!cur.autoStart),
   }
   cfg = saveConfig(patch)
   updateTray(cfg.trayIcon)
@@ -502,6 +505,7 @@ ipcMain.handle('pet:quit', () => {
 // 启动（单实例 + whenReady）
 // ---------------------------------------------------------------------------
 const isSmokeTest = process.argv.includes('--smoke-test')
+const isCaptureDemo = process.argv.includes('--capture-demo')
 
 const gotLock = app.requestSingleInstanceLock()
 if (!gotLock) {
@@ -583,10 +587,37 @@ if (!gotLock) {
               }))()`
             )
             console.log('[smoke] settings=' + JSON.stringify(sinfo))
+          // 设置窗口复选框是否反映保存的值（idleTransparency 应为 false）
+          try {
+            const boxes = await settingsWin.webContents.executeJavaScript(`(() => ({
+              idle: document.getElementById('idleInput').checked,
+              mood: document.getElementById('moodInput').checked,
+              snap: document.getElementById('snapInput').checked,
+            }))()`)
+            console.log('[smoke] settings-boxes=' + JSON.stringify(boxes))
+          // 自动保存自检：勾选 snap 开关（不点保存），等 1 秒看配置是否自动写入
+          try {
+            const snapBefore = loadConfig().snap
+            await settingsWin.webContents.executeJavaScript(`(() => {
+              var el = document.getElementById('snapInput')
+              el.checked = true
+              el.dispatchEvent(new Event('change', { bubbles: true }))
+            })()`)
+            await new Promise((r) => setTimeout(r, 1200))
+            const snapAfter = loadConfig().snap
+            console.log('[smoke] auto-save snap before=' + snapBefore + ' after=' + snapAfter)
+          } catch (err) { console.error('[smoke] auto-save test failed:', err) }
+          } catch (err) { console.error('[smoke] settings-boxes failed:', err) }
           // 音频状态检查（音效功能）
           try {
             const audioState = await petWin.webContents.executeJavaScript(`window.__dshpAudioTest()`)
             console.log('[smoke] audio-state=' + audioState)
+          // 打印桌宠实际应用的功能开关（验证设置记忆）
+          try {
+            const flags = await petWin.webContents.executeJavaScript(`window.__dshpFlags ? window.__dshpFlags() : null`)
+            const cfgState = await petWin.webContents.executeJavaScript(`window.__dshpConfig ? window.__dshpConfig() : null`)
+            console.log('[smoke] applied-flags=' + JSON.stringify(flags) + ' cfg=' + JSON.stringify(cfgState))
+          } catch (err) { console.error('[smoke] flags check failed:', err) }
           // 刷新不闪 "--" 自检：模拟余额 10.00 -> 9.50，过程中数字应保持旧值并滚动
           try {
             const flashTest = await petWin.webContents.executeJavaScript(`(async () => {
@@ -618,6 +649,50 @@ if (!gotLock) {
         } catch (err) {
           console.error('[smoke] failed:', err)
         }
+      }
+      app.quit()
+      return
+    }
+
+    if (isCaptureDemo) {
+      const outDir = process.env.WHALE_PET_CAPTURE_DIR || app.getPath('temp')
+      fs.mkdirSync(outDir, { recursive: true })
+      const save = async (w, name) => {
+        if (!w || w.isDestroyed()) return
+        const img = await w.webContents.capturePage()
+        fs.writeFileSync(path.join(outDir, name), img.toPNG())
+        console.log('[capture] ' + name)
+      }
+      await new Promise((r) => setTimeout(r, 3500))   // 等首次余额
+      if (petWin && !petWin.isDestroyed()) {
+        await save(petWin, 'shot-balance.png')
+        // 余额上涨 -> 情绪 😊
+        await petWin.webContents.executeJavaScript(`window.__dshpSetFakeBalance({ ok: true, totalBalance: '9.99', currency: 'CNY' })`)
+        await petWin.webContents.executeJavaScript(`window.__dshpTestRefresh()`)
+        await new Promise((r) => setTimeout(r, 1600))
+        await save(petWin, 'shot-mood-up.png')
+        // 低余额 -> 😰 红色
+        await petWin.webContents.executeJavaScript(`window.__dshpSetFakeBalance({ ok: true, totalBalance: '2.00', currency: 'CNY' })`)
+        await petWin.webContents.executeJavaScript(`window.__dshpTestRefresh()`)
+        await new Promise((r) => setTimeout(r, 1600))
+        await save(petWin, 'shot-low.png')
+        // 恢复真实余额
+        await petWin.webContents.executeJavaScript(`window.__dshpSetFakeBalance(null)`)
+        await petWin.webContents.executeJavaScript(`window.__dshpTestRefresh()`)
+        await new Promise((r) => setTimeout(r, 1200))
+        // 右键菜单
+        await petWin.webContents.executeJavaScript(`(() => {
+          var m = document.getElementById('menu')
+          m.style.left = '14px'; m.style.top = '8px'
+          m.classList.add('dshp-open')
+        })()`)
+        await new Promise((r) => setTimeout(r, 500))
+        await save(petWin, 'shot-menu.png')
+        // 设置窗口
+        openSettings()
+        await new Promise((r) => setTimeout(r, 1600))
+        if (settingsWin && !settingsWin.isDestroyed()) await save(settingsWin, 'shot-settings.png')
+        console.log('[capture] done -> ' + outDir)
       }
       app.quit()
       return
