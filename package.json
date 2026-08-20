@@ -1,0 +1,40 @@
+{
+  "name": "deepseek-whale-pet",
+  "version": "1.0.0",
+  "description": "把 DeepSeek 余额小鲸鱼挂件魔改成独立桌面桌宠：透明置顶悬浮小鲸鱼，实时显示 DeepSeek API 余额，脱离 DSH/浏览器。",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "smoke": "electron . --smoke-test"
+  },
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^43.4.1",
+    "electron-builder": "^26.15.3",
+    "png-to-ico": "^3.0.2"
+  },
+  "build": {
+    "appId": "com.deepseek.whale-pet",
+    "productName": "DeepSeek-Whale-Pet",
+    "files": [
+      "main.js",
+      "preload.js",
+      "renderer/**/*",
+      "assets/**/*",
+      "package.json"
+    ],
+    "directories": {
+      "output": "dist"
+    },
+    "win": {
+      "target": [
+        "portable"
+      ],
+      "icon": "build/icon.ico"
+    },
+    "portable": {
+      "artifactName": "DeepSeek-Whale-Pet-${version}-portable.exe"
+    }
+  }
+}
