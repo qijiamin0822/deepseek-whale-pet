@@ -418,9 +418,10 @@ function endDrag(e, clickAllowed) {
   settle()
 }
 
-var SQUISH = 'scaleY(0.88) scaleX(1.05)'
+// 抓取时只做轻微等比缩放，避免非等比压扁导致拖动时鲸鱼看起来在变形/放大
+var SQUISH = 'scale(0.96)'
 function pressDown() { body.style.transform = SQUISH }
-function pressUp() { body.style.transform = 'scaleY(1) scaleX(1)' }
+function pressUp() { body.style.transform = 'scale(1)' }
 
 root.addEventListener('pointerdown', onPointerDown)
 root.addEventListener('pointermove', onPointerMove)

@@ -383,9 +383,14 @@ ipcMain.handle('pet:get-position', () => {
 })
 ipcMain.handle('pet:set-position', (_e, { x, y }) => {
   if (!petWin || petWin.isDestroyed()) return { x: 0, y: 0 }
-  petWin.setPosition(Math.round(x), Math.round(y))
+  // 用 setBounds 显式固定宽高再移动：Windows 显示缩放非 100% 时，setPosition 拖动无边框
+  // 窗口会按移动方向被拉伸放大；这里锁定为正方形，避免拖动时变形（修复「拖动放大」）
+  const size = petSize(cfg.scale)
+  const nx = Math.round(x)
+  const ny = Math.round(y)
+  petWin.setBounds({ x: nx, y: ny, width: size, height: size })
   schedulePosSave()
-  return { x: Math.round(x), y: Math.round(y) }
+  return { x: nx, y: ny }
 })
 ipcMain.handle('pet:get-size', () => {
   const scale = loadConfig().scale
