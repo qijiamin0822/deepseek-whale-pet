@@ -28,7 +28,7 @@
 
 ## 快速开始 · Quick Start
 
-1. **下载 / Download**：[Release v1.0.0](https://github.com/qijiamin0822/deepseek-whale-pet/releases/tag/v1.1.13) → 双击 `DeepSeek-Whale-Pet-1.1.13-portable.exe`
+1. **下载 / Download**：[Release v1.0.0](https://github.com/qijiamin0822/deepseek-whale-pet/releases/tag/v1.1.14) → 双击 `DeepSeek-Whale-Pet-1.1.14-portable.exe`
 2. 右键小鲸鱼 → **设置** → 填入你的 DeepSeek API Key（[platform.deepseek.com](https://platform.deepseek.com) 获取）→ 保存
    Right-click the whale → **Settings** → paste your DeepSeek API Key → Save
 3. 余额显示后，每 30 秒自动刷新；单击小鲸鱼可手动刷新。

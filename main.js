@@ -381,11 +381,15 @@ function updateHotkey(enabled) {
 // ---------------------------------------------------------------------------
 function updateAutoStart(enabled) {
   try {
+    // 便携版运行时 process.execPath 指向临时解压目录，注册后开机自启会失效；
+    // electron-builder 便携版会注入 PORTABLE_EXECUTABLE_FILE 指向真实的便携版 exe 路径
+    const exePath = process.env.PORTABLE_EXECUTABLE_FILE || process.execPath
     app.setLoginItemSettings({
       openAtLogin: enabled,
-      path: process.execPath,
+      path: exePath,
       args: [],
     })
+    console.log('[whale-pet] autoStart set=' + enabled + ' path=' + exePath)
   } catch (err) {
     console.error('[whale-pet] setLoginItemSettings failed:', err)
   }
